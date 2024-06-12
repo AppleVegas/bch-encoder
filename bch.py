@@ -14,12 +14,12 @@ def printbin(n, l):
     print(("0"*d) + b)
 
 # Input of primitive polynome
-input_pm = int("0x" + '83', 16)#input("Primitive polynome (hex): "), 16)
+input_pm = int("0x" + '13', 16)#input("Primitive polynome (hex): "), 16)
 poly_hex = hex(input_pm)
 poly_bin = bin(input_pm)
 m = input_pm.bit_length() - 1
 n = 2**m - 1
-t = 4
+t = 3
 print("Power (m): %d\nInt: %d\nHex: %s\nBinary: %s\n" % (m, input_pm, poly_hex, poly_bin))
 
 class GF():
@@ -81,6 +81,7 @@ def gf_poly_multiply(a, b):
     for i, coef_a in enumerate(a):
         for j, coef_b in enumerate(b):
             result[i + j] ^= field._mul(coef_a, coef_b)
+    result = [i % 2 for i in result]
     return result
 
 def poly_to_int(poly):
@@ -89,13 +90,16 @@ def poly_to_int(poly):
         result = (result << 1) | coef
     return result
 
+seen_roots = set()  # We don't need already seen roots
 def gf_find_min_poly(root):
     min_poly = [1]  # Let g(x) be 1
-    seen_roots = set()  # We don't need already seen roots
 
-    for _ in range(d):
+    for _ in range(1, 2*t + 1): # i <= 2t
+        
+        #print(field.look(root), " wtf")
         if root in seen_roots:
             break
+
         seen_roots.add(root)
         min_poly = gf_poly_multiply(min_poly, [1, root])  # Multiply by (x - root)
         root = field.pow(root, 2)
@@ -103,20 +107,14 @@ def gf_find_min_poly(root):
     return min_poly
 
 g_x = [1]
-for i in range(1, d): # a <= d - 1
+for i in range(1, 2*t + 1): # i <= 2t
+    if field.a(i) in seen_roots:
+            continue
     print(f"Visiting a^{i} = {bin(field.a(i))[2:].zfill(m)}")
     f_x = gf_find_min_poly(field.a(i))
     print(bin(poly_to_int(f_x)))
     g_x = gf_poly_multiply(g_x, f_x)
-    #for j in range(1, 2**m):
-    #    #r = field.a(i)
-    #    #for k in range(1, j):
-    #    #    r = field.mul(r, field.a(i))
-    #    if field.a(i*j) == field.a(j):
-    #        print(j, field.a(i*j),i*j, (i*j) % (2**m - 1))
-    #        #print(j)
-    #if j == field.a(2):
-    #    print(i)
+  
 
 print(bin(poly_to_int(g_x)))
 #TODO: cleanup, encoding decoding
