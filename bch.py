@@ -14,7 +14,7 @@ def printbin(n, l):
     print(("0"*d) + b)
 
 # Input of primitive polynome
-input_pm = int("0x" + '13', 16)#input("Primitive polynome (hex): "), 16)
+input_pm = int("0x" + '83', 16)#input("Primitive polynome (hex): "), 16)
 poly_hex = hex(input_pm)
 poly_bin = bin(input_pm)
 m = input_pm.bit_length() - 1
@@ -81,11 +81,12 @@ def gf_poly_multiply(a, b):
     for i, coef_a in enumerate(a):
         for j, coef_b in enumerate(b):
             result[i + j] ^= field._mul(coef_a, coef_b)
-    result = [i % 2 for i in result]
+    #result = [i % 2 for i in result]
     return result
 
 def poly_to_int(poly):
     result = 0
+
     for coef in poly:
         result = (result << 1) | coef
     return result
@@ -94,8 +95,8 @@ seen_roots = set()  # We don't need already seen roots
 def gf_find_min_poly(root):
     min_poly = [1]  # Let g(x) be 1
 
-    for _ in range(1, 2*t + 1): # i <= 2t
-        
+    for i in range(1, 2**m): # i <= 2^m
+        #print(field.look(root))
         #print(field.look(root), " wtf")
         if root in seen_roots:
             break
