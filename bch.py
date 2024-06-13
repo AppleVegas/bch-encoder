@@ -6,12 +6,7 @@ import matplotlib as plt
 GENERATOR = 0b10
 
 def printbin(n, l):
-    b = bin(n)[2:]
-    d = l - len(b)
-    if d < 1:
-        print(b)
-        return
-    print(("0"*d) + b)
+    print(bin(n)[2:].zfill(l))
 
 # Input of primitive polynome
 input_pm = int("0x" + '83', 16)#input("Primitive polynome (hex): "), 16)
@@ -19,7 +14,8 @@ poly_hex = hex(input_pm)
 poly_bin = bin(input_pm)
 m = input_pm.bit_length() - 1
 n = 2**m - 1
-t = 3
+t = 1
+d = 2*t + 1
 print("Power (m): %d\nInt: %d\nHex: %s\nBinary: %s\n" % (m, input_pm, poly_hex, poly_bin))
 
 class GF():
@@ -32,11 +28,10 @@ class GF():
     
     def generate(self) -> None:
         a = 1
-        gen = GENERATOR
         for i in range(0, 2**self.m):
             self.field.append(a)
             self.lookup[a] = i
-            a = self._mul(a, gen)
+            a = self._mul(a, GENERATOR)
     
     def a(self, index) -> 'int':
         return self.field[index % (2**self.m - 1)]
@@ -64,6 +59,63 @@ class GF():
                 a <<= 1
             b >>= 1
         return r
+    
+    def poly_mul(self, a: list, b: list) -> 'list':
+        r = [0] * (len(a) + len(b) - 1)
+        for i, coef_a in enumerate(a):
+            for j, coef_b in enumerate(b):
+                r[i + j] ^= self._mul(coef_a, coef_b)
+        #r = [i % 2 for i in r]
+        return r
+    
+    def poly_to_int(self, poly):
+        r = 0
+        for coef in poly:
+            r = (r << 1) | coef
+        return r
+    
+    def min_poly(self, root):
+        min_poly = [1]  # Let f(x) be 1
+
+        seen_roots = set()  # Separating cyclotomic classes 
+
+        for _ in range(1, 2**m): # i <= 2^m
+            if root in seen_roots:
+                break
+
+            seen_roots.add(root)
+            min_poly = self.poly_mul(min_poly, [1, root])  # Multiply by (x - root)
+            root = self.pow(root, 2)
+    
+        return min_poly
+    
+    def get_generator(self):
+        g_x = [1]
+
+        seen_roots = set()  # Separating cyclotomic classes 
+
+        for i in range(1, 2*t + 1): # i <= 2t
+            root = field.a(i)
+
+            if root in seen_roots:
+                continue
+
+            #print(f"Visiting a^{i} = {bin(field.a(i))[2:].zfill(m)}")
+
+            f_x = [1]
+
+            for _ in range(1, 2**m): # i <= 2^m
+                if root in seen_roots:
+                    break
+
+                seen_roots.add(root)
+                f_x = self.poly_mul(f_x, [1, root])  # Multiply by (x - root)
+                root = field.pow(root, 2)
+
+            #print(bin(self.poly_to_int(f_x)))
+
+            g_x = self.poly_mul(g_x, f_x)
+        return self.poly_to_int(g_x)
 
     # String representaion of the field for printing
     def __str__(self) -> str:
@@ -74,48 +126,5 @@ field = GF(input_pm)
 # Printing out field
 print(field)
 
-d = 2*t + 1
-
-def gf_poly_multiply(a, b):
-    result = [0] * (len(a) + len(b) - 1)
-    for i, coef_a in enumerate(a):
-        for j, coef_b in enumerate(b):
-            result[i + j] ^= field._mul(coef_a, coef_b)
-    #result = [i % 2 for i in result]
-    return result
-
-def poly_to_int(poly):
-    result = 0
-
-    for coef in poly:
-        result = (result << 1) | coef
-    return result
-
-seen_roots = set()  # We don't need already seen roots
-def gf_find_min_poly(root):
-    min_poly = [1]  # Let g(x) be 1
-
-    for i in range(1, 2**m): # i <= 2^m
-        #print(field.look(root))
-        #print(field.look(root), " wtf")
-        if root in seen_roots:
-            break
-
-        seen_roots.add(root)
-        min_poly = gf_poly_multiply(min_poly, [1, root])  # Multiply by (x - root)
-        root = field.pow(root, 2)
-    
-    return min_poly
-
-g_x = [1]
-for i in range(1, 2*t + 1): # i <= 2t
-    if field.a(i) in seen_roots:
-            continue
-    print(f"Visiting a^{i} = {bin(field.a(i))[2:].zfill(m)}")
-    f_x = gf_find_min_poly(field.a(i))
-    print(bin(poly_to_int(f_x)))
-    g_x = gf_poly_multiply(g_x, f_x)
-  
-
-print(bin(poly_to_int(g_x)))
+print(bin(field.get_generator())) # Printing generator polynome
 #TODO: cleanup, encoding decoding
