@@ -8,19 +8,16 @@ GENERATOR = 0b10
 def printbin(n, l):
     print(bin(n)[2:].zfill(l))
 
-# Input of primitive polynome
-input_pm = int("0x" + '83', 16)#input("Primitive polynome (hex): "), 16)
+# Input of primitive polynomial
+input_pm = int("0x" + '13', 16)#input("Primitive polynomial (hex): "), 16)
+input_t = 2 #input("Correctable error count t (int): ")
 poly_hex = hex(input_pm)
 poly_bin = bin(input_pm)
-m = input_pm.bit_length() - 1
-n = 2**m - 1
-t = 1
-d = 2*t + 1
-print("Power (m): %d\nInt: %d\nHex: %s\nBinary: %s\n" % (m, input_pm, poly_hex, poly_bin))
+print("Power (m): %d\nInt: %d\nHex: %s\nBinary: %s\n" % (input_pm.bit_length() - 1, input_pm, poly_hex, poly_bin))
 
 class GF():
     def __init__(self, poly: int) -> 'GF':
-        self.p = poly # Primitive polynome used in generating the field and multiplication
+        self.p = poly # Primitive polynomial used in generating the field and multiplication
         self.m = poly.bit_length() - 1 # Power m in GF(p**m)
         self.field = [] # Array for storing the field
         self.lookup = {} # Dictionary for reverse lookup of index of field item
@@ -68,18 +65,22 @@ class GF():
         #r = [i % 2 for i in r]
         return r
     
-    def poly_to_int(self, poly):
+    def poly_to_int(self, poly: list) -> 'int':
+        #poly = [i % 2 for i in poly]
         r = 0
         for coef in poly:
             r = (r << 1) | coef
         return r
+    
+    def int_to_poly(self, integer: int) -> 'list':
+        return [int(x) for x in bin(integer)[2:]]
     
     def min_poly(self, root):
         min_poly = [1]  # Let f(x) be 1
 
         seen_roots = set()  # Separating cyclotomic classes 
 
-        for _ in range(1, 2**m): # i <= 2^m
+        for _ in range(1, 2**self.m): # i <= 2^m
             if root in seen_roots:
                 break
 
@@ -88,14 +89,30 @@ class GF():
             root = self.pow(root, 2)
     
         return min_poly
+
+    # String representaion of the field for printing
+    def __str__(self) -> str:
+        return ('GF(2^%d) = \n' % self.m) + '\n'.join([('a^%d = ' % i) + bin(s)[2:].zfill(self.m) for i,s in enumerate(self.field)])
+
+class BCHEncoder():
+    def __init__(self) -> 'BCHEncoder':
+        # Creating field
+        self.field = GF(input_pm) # ideally polynomials should be generated ig, using input polys from table rn
+        self.m = input_pm.bit_length() - 1
+        self.n = 2**self.m - 1
+        self.t = input_t
+        self.d = 2*self.t + 1
+        self.generator = self.get_generator()
+        self.k = self.n - (self.generator.bit_length() - 1)
+        self.r = self.n - self.k
     
-    def get_generator(self):
+    def get_generator(self) -> 'int':
         g_x = [1]
 
         seen_roots = set()  # Separating cyclotomic classes 
 
-        for i in range(1, 2*t + 1): # i <= 2t
-            root = field.a(i)
+        for i in range(1, 2*self.t + 1): # i <= 2t
+            root = self.field.a(i)
 
             if root in seen_roots:
                 continue
@@ -104,27 +121,47 @@ class GF():
 
             f_x = [1]
 
-            for _ in range(1, 2**m): # i <= 2^m
+            for _ in range(1, 2**self.m): # i <= 2^m
                 if root in seen_roots:
                     break
 
                 seen_roots.add(root)
-                f_x = self.poly_mul(f_x, [1, root])  # Multiply by (x - root)
-                root = field.pow(root, 2)
-
+                f_x = self.field.poly_mul(f_x, [1, root])  # Multiply by (x - root)
+                root = self.field.pow(root, 2)
+            
             #print(bin(self.poly_to_int(f_x)))
 
-            g_x = self.poly_mul(g_x, f_x)
-        return self.poly_to_int(g_x)
+            g_x = self.field.poly_mul(g_x, f_x)
+        return self.field.poly_to_int(g_x)
 
-    # String representaion of the field for printing
-    def __str__(self) -> str:
-        return ('GF(2^%d) = \n' % self.m) + '\n'.join([('a^%d = ' % i) + bin(s)[2:].zfill(self.m) for i,s in enumerate(self.field)])
+    def build_matrix(self) -> 'np.ndarray':
+       #self.generator = 0b100101
+       #self.k = 11
+       #self.n = 16
+       #self.r = self.n - self.k
+        R = np.zeros(self.k, int)
+        R[self.k - 1] = 1 << self.r # Beginning from XORing x^n
+        print(R)
+        for k in range(self.k - 1, -1, -1): # Reversibly filling a matrix so we don't have to reverse it later
+            if (R[k] >> self.r) & 1:
+                R[k] ^= self.generator
+            if k:
+                R[k - 1] = R[k] << 1
+        for k in R:
+            print(np.binary_repr(k))
+        
+        
 
-# Creating field
-field = GF(input_pm)
+    def encode(self, data: int) -> 'int':
+        pass
+
+    def decode(self, data: int) -> 'int':
+        pass
+
+encoder = BCHEncoder()
+
 # Printing out field
-print(field)
-
-print(bin(field.get_generator())) # Printing generator polynome
+print(encoder.field)
+print(bin(encoder.generator)) # Printing generator polynomial
+encoder.build_matrix()
 #TODO: cleanup, encoding decoding
