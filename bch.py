@@ -83,7 +83,7 @@ class GF():
         return r
     
     def int_to_poly(self, integer: int) -> 'list':
-        return [int(x) for x in bin(integer)[2:]]
+        return [int(x) for x in np.binary_repr(integer)]
     
     def min_poly(self, root):
         min_poly = [1]  # Let f(x) be 1
@@ -115,6 +115,9 @@ class BCHEncoder():
         self.generator = self.get_generator()
         self.k = self.n - (self.generator.bit_length() - 1)
         self.r = self.n - self.k
+        self.G = None # Generator matrix
+        self.H = None # Parity-check matrix
+        self.build_matrix()
     
     def get_generator(self) -> 'int':
         g_x = [1]
@@ -145,13 +148,12 @@ class BCHEncoder():
         return self.field.poly_to_int(g_x)
 
     def build_matrix(self) -> 'np.ndarray':
-       #self.generator = 0b100101
-       #self.k = 11
-       #self.n = 16
-       #self.r = self.n - self.k
-        R = np.zeros(self.k, int)
+        #self.generator = 0b1011
+        #self.k = 4
+        #self.n = 7
+        #self.r = self.n - self.k
+        R = np.zeros(self.k, np.int64)
         R[self.k - 1] = 1 << self.r # Beginning from XORing x^n
-        print(R)
         for k in range(self.k - 1, -1, -1): # Reversibly filling a matrix so we don't have to reverse it later
             if (R[k] >> self.r) & 1:
                 R[k] ^= self.generator
@@ -159,6 +161,10 @@ class BCHEncoder():
                 R[k - 1] = R[k] << 1
         for k in R:
             print(np.binary_repr(k).zfill(self.r))
+        
+        R = (((R[:,None] & (1 << np.arange(self.r))[::-1])) > 0).astype(int)
+        self.G = np.hstack((np.identity(self.k, int),R))
+        self.H = np.hstack((R.transpose(),np.identity(self.r, int)))
         
         
 
@@ -173,5 +179,5 @@ encoder = BCHEncoder()
 # Printing out field
 print(encoder.field)
 print(bin(encoder.generator)) # Printing generator polynomial
-encoder.build_matrix()
+print("Generator matrix\nG = \n%s\n\nParity-check matrix\nH = \n%s\n" % (encoder.G, encoder.H))
 #TODO: cleanup, encoding decoding
