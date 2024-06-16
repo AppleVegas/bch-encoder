@@ -88,7 +88,14 @@ class GF():
         return r
     
     def int_to_poly(self, integer: int) -> 'list':
-        return [int(x) for x in np.binary_repr(integer)]
+        l = integer.bit_length()
+        r = [0] * l
+        for i in range(0, l):
+            if integer & (1 << i):
+               r[(l - 1) - i] = 1
+               continue
+            r[i] = 0 
+        return r # [int(x) for x in np.binary_repr(integer)]
     
     def min_poly(self, root):
         min_poly = [1]  # Let f(x) be 1
@@ -154,10 +161,6 @@ class BCHEncoder():
         return g_x
 
     def build_matrix(self) -> 'np.ndarray':
-        #self.generator = 0b1011
-        #self.k = 4
-        #self.n = 7
-        #self.r = self.n - self.k
         R = np.zeros(self.k, np.int64)
         R[self.k - 1] = 1 << self.r # Beginning from XORing x^n
         for k in range(self.k - 1, -1, -1): # Reversibly filling a matrix so we don't have to reverse it later
@@ -165,7 +168,7 @@ class BCHEncoder():
                 R[k] ^= self.generator
             if k:
                 R[k - 1] = R[k] << 1
-        # ^ could have been replaced with _mod(2 << k, self.generator)
+        # ^ could have been replaced with _mod(1 << k, self.generator)
 
         for k in R:
             print(np.binary_repr(k).zfill(self.r))
@@ -176,7 +179,8 @@ class BCHEncoder():
         
         
     def encode_systematic(self, data: int) -> 'int':
-        return int(((2 << self.r - 1) * data) ^ ( _mod(((2 << self.r - 1) * data), self.generator) ))
+        t = self.field.poly_to_int(self.field.poly_mul(self.field.int_to_poly(2 << self.r - 1), self.field.int_to_poly(data)))
+        return int( t ^ ( _mod(t, self.generator)) )
 
     def encode_non_systematic(self, data: int) -> 'int':
         encoded = self.field.poly_mul(self.field.int_to_poly(data), self.generator_poly)
@@ -193,4 +197,4 @@ print(bin(encoder.generator)) # Printing generator polynomial
 print("Generator matrix\nG = \n%s\n\nParity-check matrix\nH = \n%s\n" % (encoder.G, encoder.H))
 print(bin(encoder.encode_non_systematic(0b1110001)))
 print(bin(encoder.encode_systematic(0b1110001)))
-#TODO: cleanup, encoding decoding
+#TODO: cleanup, decoding
