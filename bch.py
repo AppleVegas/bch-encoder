@@ -25,6 +25,11 @@ poly_hex = hex(input_pm)
 poly_bin = bin(input_pm)
 print("Power (m): %d\nInt: %d\nHex: %s\nBinary: %s\n" % (input_pm.bit_length() - 1, input_pm, poly_hex, poly_bin))
 
+def _mod(a: int, b: int):
+    while a.bit_length() >= b.bit_length():
+        a ^= b << (a.bit_length() - b.bit_length())
+    return a
+
 class GF():
     def __init__(self, poly: int) -> 'GF':
         self.p = poly # Primitive polynomial used in generating the field and multiplication
@@ -112,14 +117,15 @@ class BCHEncoder():
         self.n = 2**self.m - 1
         self.t = input_t
         self.d = 2*self.t + 1
-        self.generator = self.get_generator()
+        self.generator_poly = self.get_generator()
+        self.generator = self.field.poly_to_int(self.generator_poly)
         self.k = self.n - (self.generator.bit_length() - 1)
         self.r = self.n - self.k
         self.G = None # Generator matrix
         self.H = None # Parity-check matrix
         self.build_matrix()
     
-    def get_generator(self) -> 'int':
+    def get_generator(self) -> 'list':
         g_x = [1]
 
         seen_roots = set()  # Separating cyclotomic classes 
@@ -145,7 +151,7 @@ class BCHEncoder():
             #print(bin(self.poly_to_int(f_x)))
 
             g_x = self.field.poly_mul(g_x, f_x)
-        return self.field.poly_to_int(g_x)
+        return g_x
 
     def build_matrix(self) -> 'np.ndarray':
         #self.generator = 0b1011
@@ -159,6 +165,8 @@ class BCHEncoder():
                 R[k] ^= self.generator
             if k:
                 R[k - 1] = R[k] << 1
+        # ^ could have been replaced with _mod(2 << k, self.generator)
+
         for k in R:
             print(np.binary_repr(k).zfill(self.r))
         
@@ -167,9 +175,12 @@ class BCHEncoder():
         self.H = np.hstack((R.transpose(),np.identity(self.r, int)))
         
         
+    def encode_systematic(self, data: int) -> 'int':
+        return int(((2 << self.r - 1) * data) ^ ( _mod(((2 << self.r - 1) * data), self.generator) ))
 
-    def encode(self, data: int) -> 'int':
-        pass
+    def encode_non_systematic(self, data: int) -> 'int':
+        encoded = self.field.poly_mul(self.field.int_to_poly(data), self.generator_poly)
+        return self.field.poly_to_int(encoded)
 
     def decode(self, data: int) -> 'int':
         pass
@@ -180,4 +191,6 @@ encoder = BCHEncoder()
 print(encoder.field)
 print(bin(encoder.generator)) # Printing generator polynomial
 print("Generator matrix\nG = \n%s\n\nParity-check matrix\nH = \n%s\n" % (encoder.G, encoder.H))
+print(bin(encoder.encode_non_systematic(0b1110001)))
+print(bin(encoder.encode_systematic(0b1110001)))
 #TODO: cleanup, encoding decoding
