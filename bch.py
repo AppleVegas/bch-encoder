@@ -11,6 +11,16 @@ def printbin(n, l):
 # Input of primitive polynomial
 input_pm = int("0x" + '13', 16)#input("Primitive polynomial (hex): "), 16)
 input_t = 2 #input("Correctable error count t (int): ")
+input_encodetype = 2
+while input_encodetype is None:
+    try:
+        t = int(input("Encoding type\n1 - Polynomial (non-systematic)\n2 - Matrix (systematic)\n"))
+        if t < 1 or t > 2:
+            raise Exception()
+        input_encodetype = t
+    except:
+        print("ffs...")
+
 poly_hex = hex(input_pm)
 poly_bin = bin(input_pm)
 print("Power (m): %d\nInt: %d\nHex: %s\nBinary: %s\n" % (input_pm.bit_length() - 1, input_pm, poly_hex, poly_bin))
@@ -148,7 +158,7 @@ class BCHEncoder():
             if k:
                 R[k - 1] = R[k] << 1
         for k in R:
-            print(np.binary_repr(k))
+            print(np.binary_repr(k).zfill(self.r))
         
         
 
