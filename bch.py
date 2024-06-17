@@ -130,6 +130,7 @@ class BCHEncoder():
         self.r = self.n - self.k
         self.G = None # Generator matrix
         self.H = None # Parity-check matrix
+        self.HT = None # Parity-check matrix transposed
         self.build_matrix()
     
     def get_generator(self) -> 'list':
@@ -168,7 +169,7 @@ class BCHEncoder():
                 R[k] ^= self.generator
             if k:
                 R[k - 1] = R[k] << 1
-        # ^ could have been replaced with _mod(1 << k, self.generator)
+        # this^ could have been replaced with _mod(1 << k, self.generator)
 
         for k in R:
             print(np.binary_repr(k).zfill(self.r))
@@ -176,6 +177,7 @@ class BCHEncoder():
         R = (((R[:,None] & (1 << np.arange(self.r))[::-1])) > 0).astype(int)
         self.G = np.hstack((np.identity(self.k, int),R))
         self.H = np.hstack((R.transpose(),np.identity(self.r, int)))
+        self.HT = np.vstack((R,np.identity(self.r, int)))
         
         
     def encode_systematic(self, data: int) -> 'int':
@@ -194,7 +196,9 @@ encoder = BCHEncoder()
 # Printing out field
 print(encoder.field)
 print(bin(encoder.generator)) # Printing generator polynomial
-print("Generator matrix\nG = \n%s\n\nParity-check matrix\nH = \n%s\n" % (encoder.G, encoder.H))
+print("Generator matrix\nG = \n%s\n\nParity-check matrix\nH = \n%s\nParity-check matrix transposed\nH^T = \n%s\n" % (encoder.G, encoder.H, encoder.HT))
 print(bin(encoder.encode_non_systematic(0b1110001)))
+print(bin(_mod(0b101001010100001, encoder.generator)))
 print(bin(encoder.encode_systematic(0b1110001)))
+
 #TODO: cleanup, decoding
