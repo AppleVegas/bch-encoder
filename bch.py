@@ -1,31 +1,12 @@
 import numpy as np
 import matplotlib as plt
 import random
+#import sys
+#np.set_printoptions(threshold=sys.maxsize)
 
 # Generator for generating galois field. Equals to 2, because we're generating galois field for base 2.
 # Actually is p in GF(p**m)
 GENERATOR = 0b10
-
-def printbin(n, l):
-    print(bin(n)[2:].zfill(l))
-
-# Input of primitive polynomial
-input_pm = int("0x" + '11D', 16)#input("Primitive polynomial (hex): "), 16)
-input_t = 5 #input("Correctable error count t (int): ")
-input_encodetype = 2
-while input_encodetype is None:
-    try:
-        t = int(input("Encoding type\n1 - Polynomial (non-systematic)\n2 - Matrix (systematic)\n"))
-        if t < 1 or t > 2:
-            raise Exception()
-        input_encodetype = t
-    except:
-        print("ffs...")
-
-poly_hex = hex(input_pm)
-poly_bin = bin(input_pm)
-print("Power (m): %d\nInt: %d\nHex: %s\nBinary: %s\n" % (input_pm.bit_length() - 1, input_pm, poly_hex, poly_bin))
-
 
 class GF():
     def __init__(self, poly: int) -> 'GF':
@@ -140,12 +121,12 @@ class GF():
         return ('GF(2^%d) = \n' % self.m) + '\n'.join([('a^%d = ' % i) + bin(s)[2:].zfill(self.m) for i,s in enumerate(self.field)])
 
 class BCHEncoder():
-    def __init__(self) -> 'BCHEncoder':
+    def __init__(self, irreducible, t) -> 'BCHEncoder':
         # Creating field
-        self.field = GF(input_pm) # ideally polynomials should be generated ig, using input polys from table rn
-        self.m = input_pm.bit_length() - 1
+        self.field = GF(irreducible) # ideally polynomials should be generated ig, using input polys from table rn
+        self.m = irreducible.bit_length() - 1
         self.n = 2**self.m - 1
-        self.t = input_t
+        self.t = t
         self.d = 2*self.t + 1
         self.generator_poly = self.get_generator()
         self.generator = self.field.poly_to_int(self.generator_poly)
@@ -271,31 +252,44 @@ class BCHEncoder():
         
         return fixed_data
 
+if __name__ == "__main__":
+    # Input of primitive polynomial
+    input_pm = int("0x" + '11D', 16)#input("Primitive polynomial (hex): "), 16)
+    input_t = 5 #input("Correctable error count t (int): ")
+    input_encodetype = 2
+    while input_encodetype is None:
+        try:
+            t = int(input("Encoding type\n1 - Polynomial (non-systematic)\n2 - Matrix (systematic)\n"))
+            if t < 1 or t > 2:
+                raise Exception()
+            input_encodetype = t
+        except:
+            print("ffs...")
 
-encoder = BCHEncoder()
+    poly_hex = hex(input_pm)
+    poly_bin = bin(input_pm)
+    print("Power (m): %d\nInt: %d\nHex: %s\nBinary: %s\n" % (input_pm.bit_length() - 1, input_pm, poly_hex, poly_bin))
 
-# Printing out field
-print(encoder.field)
-print(bin(encoder.generator)) # Printing generator polynomial
-print("Generator matrix\nG = \n%s\n\nParity-check matrix\nH = \n%s\n\nParity-check matrix transposed\nH^T = \n%s\n" % (encoder.G, encoder.H, encoder.HT))
+    encoder = BCHEncoder(input_pm, input_t)
 
-wfd = [1,1,0,1,0,0,1,1,0,1,1,0,1,1,0,1,0,1,0,1,0,1,0,1,1,0,0,1,1,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1,1,0,1,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1,1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,0,0,0,1,0,0,1,1,0,1,0,1,1,0,0]
-word = (1 << encoder.k) - (1 << encoder.k - random.randint(1, encoder.k - 1))
-encoder1 = encoder.encode_non_systematic(word)
-encoder2 = encoder.encode_systematic(word)
+    # Printing out field
+    print(encoder.field)
+    print(bin(encoder.generator)) # Printing generator polynomial
+    print("Generator matrix\nG = \n%s\n\nParity-check matrix\nH = \n%s\n\nParity-check matrix transposed\nH^T = \n%s\n" % (encoder.G, encoder.H, encoder.HT))
 
-#encoder1 ^= (0b001110000000000)
-#encoder2 ^= (0b1001010)
+    word = (1 << encoder.k) - (1 << encoder.k - random.randint(1, encoder.k - 1))
+    encoder1 = encoder.encode_non_systematic(word)
+    encoder2 = encoder.encode_systematic(word)
 
-print(encoder1, "encode non sys")
-print(encoder2, "encode sys\n")
+    print(encoder1, "encode non sys")
+    print(encoder2, "encode sys\n")
 
-for i in range(0, 5):
-    rnd = random.randint(0, encoder.n)
-    encoder1[rnd] ^= 1
-    encoder2[rnd] ^= 1
+    for i in range(0, 5):
+        rnd = random.randint(0, encoder.n)
+        encoder1[rnd] ^= 1
+        encoder2[rnd] ^= 1
 
-print(encoder.decode(encoder1), "decode non sys")
-print(encoder.decode(encoder2), "decode sys")
+    print(encoder.decode(encoder1), "decode non sys")
+    print(encoder.decode(encoder2), "decode sys")
 
 #TODO: cleanup, decoding
