@@ -121,7 +121,7 @@ class GF():
         return ('GF(2^%d) = \n' % self.m) + '\n'.join([('a^%d = ' % i) + bin(s)[2:].zfill(self.m) for i,s in enumerate(self.field)])
 
 class BCHEncoder():
-    def __init__(self, irreducible, t) -> 'BCHEncoder':
+    def __init__(self, irreducible: int, t: int) -> 'BCHEncoder':
         # Creating field
         self.field = GF(irreducible) # ideally polynomials should be generated ig, using input polys from table rn
         self.m = irreducible.bit_length() - 1
@@ -161,7 +161,7 @@ class BCHEncoder():
             g_x = self.field.poly_mul(g_x, f_x)
         return g_x
 
-    def build_matrix(self):
+    def build_matrix(self) -> 'None':
         R = np.zeros(self.k, np.int64)
         R[self.k - 1] = 1 << self.r # Beginning from XORing x^n
         for k in range(self.k - 1, -1, -1): # Reversibly filling a matrix so we don't have to reverse it later
@@ -177,7 +177,7 @@ class BCHEncoder():
         self.HT = np.vstack((R,np.identity(self.r, int)))
         
         
-    def encode_systematic(self, data: int) -> 'int':
+    def encode_systematic(self, data: int) -> 'list':
         t = (data << self.r) 
         return self.field.int_to_poly( t ^ ( self.field._mod(t, self.generator)) )
 
@@ -198,7 +198,7 @@ class BCHEncoder():
         '''
         return S
 
-    def find_error_locator(self, synd): # Berlekamp-Massey algorithm
+    def find_error_locator(self, synd) -> 'list': # Berlekamp-Massey algorithm
         err_loc = [1]
         old_loc = [1]
 
@@ -215,7 +215,7 @@ class BCHEncoder():
                 err_loc = self.field.poly_add(err_loc, self.field.poly_scale(old_loc, delta))
         return err_loc
 
-    def find_errors(self, locator_poly, length):
+    def find_errors(self, locator_poly, length) -> 'list':
         err_pos = []
         for i in range(length):
             if self.field.poly_eval(locator_poly, self.field.a(i)) == 0:
