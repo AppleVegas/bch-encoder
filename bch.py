@@ -292,4 +292,4 @@ if __name__ == "__main__":
     print(encoder.decode(encoder1), "decode non sys")
     print(encoder.decode(encoder2), "decode sys")
 
-#TODO: cleanup, decoding
+#TODO: cleanup
