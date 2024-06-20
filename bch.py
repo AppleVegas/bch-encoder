@@ -4,6 +4,29 @@ import random
 #import sys
 #np.set_printoptions(threshold=sys.maxsize)
 
+'''
+⣿⣿⠛⠛⠛⠛⠿⠿⢿⠷⠸⠿⠿⠿⠿⢿⡿⠿⠛⠛⠛⠛⢻⣿⣿⣿⣿
+⣿⣿⡷ ⣸⣟⠿⢿⢶⣶⣾⣿⣿⣿⣿⣷⣖⠻⢛⣿⢀⠰⣿⣿⣿⣿⣿
+⣿⣿⣧⡐⢿⠟⠂⢈⣼⣿⣿⣿⣿⣿⣿⣿⣿⣖⠚⣍⠌⢠⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣆⢰⣾⠉⢩⣽⠿⢿⣿⣿⣿⣿⠛⣤ ⡈⢰⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⣿⣿⣦⢻⣇⠘⠋ ⣘⣿⣿⣿⡇⠈⠉⢀⠇⣸⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⠟⠛⢃⣼⣿⣿⣷⣿⣿⣿⣿⣿⣿⣿⣿⠇⣠⣉⠛⠿⢿⣿⣿⣿
+⣿⡿⠋⢠⡆⢸⣿⣿⣿⣿⣿⣿⡟⢛⠛⢻⣿⠋⢠⡟⢹⡶⢤⣌⣻⣿⡿
+⠋⣤⣿⡿⢁⣾⣿⣿⣿⣿⣿⣿⣿⣟⣳⠞⣽⣄⢻⣽⠛⢠⣿⣿⣿⣿⣿
+⣿⣿⡿⠁⣾⣿⣿⣿⣿⣿⣿⣿⣭⣯⣵⣿⣿⣿⡨⣿⣿⣿⣿⣿⣿⣿⣷
+⣿⣿⡇⠰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⢿⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣷ ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣼⣿⣿⣿⣿⣿⣿⣿
+⣿⣿⣿⡃⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+
+Simple Bose–Chaudhuri–Hocquenghem (BCH) Encoder / Decoder
+So far supports creating a code that fixes up to 7 bit errors.
+To fix more, lists have to be replaced with numpy arrays.
+Can create galois fields. Tested up to GF(2^8). Fields of higher 
+power might not work due to small ints in python. Numpy rewrite might be required.
+
+Comments in this file may be useful, may be not. 
+Who is even gonna use this thing? 
+'''
 # Generator for generating galois field. Equals to 2, because we're generating galois field for base 2.
 # Actually is p in GF(p**m)
 GENERATOR = 0b10
@@ -48,7 +71,7 @@ class GF():
             a ^= b << (a.bit_length() - b.bit_length())
         return a
     
-    def _mul(self, a: int, b: int) -> 'int':
+    def _mul(self, a: int, b: int) -> 'int': # Underscore functions don't use hashmap
         r = 0
         while b != 0:
             if (b & 1):
@@ -66,6 +89,23 @@ class GF():
             for j, coef_b in enumerate(b):
                 r[i + j] ^= self._mul(coef_a, coef_b)
         return r
+    
+    def poly_div(self, a: list, b: list):
+            if not b:
+                raise ZeroDivisionError()
+            m = len(a) - 1
+            n = len(b) - 1
+
+            q = [0] * (m - n + 1)
+            r = a[:]
+
+            for i in range(m - n + 1):
+                lead = r[i]
+                if lead != 0:
+                    for j in range(n + 1):
+                        r[i + j] ^= b[j]
+                    q[i] = 1
+            return q
     
     def poly_eval(self, a: list, x: int) -> 'int':
         r = a[0]
@@ -178,10 +218,16 @@ class BCHEncoder():
         
         
     def encode_systematic(self, data: int) -> 'list':
+        if data.bit_length() > self.k:
+            raise ValueError("Cannot encode message with length %d! Maximum message length is %d" % (data.bit_length(), self.k))
+
         t = (data << self.r) 
         return self.field.int_to_poly( t ^ ( self.field._mod(t, self.generator)) )
 
     def encode_non_systematic(self, data: int) -> 'list':
+        if data.bit_length() > self.k:
+            raise ValueError("Cannot encode message with length %d! Maximum message length is %d" % (data.bit_length(), self.k))
+
         encoded = self.field.poly_mul(self.field.int_to_poly(data), self.generator_poly)
         return encoded
     
@@ -222,10 +268,24 @@ class BCHEncoder():
                 err_pos.append((length - i) % length)
         return err_pos
     
-    def decode(self, data_v: list) -> 'list':
-        fixed_data = data_v
+    def decode(self, data_v: list, systematical: bool) -> 'list':
         length = len(data_v)
+        #if length < self.n:
+        #    data_v = ([0] * (self.n - length)) + data_v
+
+        fixed_data = data_v
+        
         syndromes = self.get_syndromes(data_v)
+
+        '''
+        for loop is actually redundant here
+        gonna keep it there on the off chance I can
+        get GF matrix multiplication working
+        to straight up solve the system basic PGZ algorithm
+        offers to solve.
+
+        so far np.dot seems gross for this task 
+        '''
 
         for v in range(self.t, 0, -1): # initially v = t 
             s_matrix = np.zeros((v, v), dtype=int)
@@ -239,10 +299,13 @@ class BCHEncoder():
                 continue
             
             loc = self.find_error_locator(syndromes)
-            errors = self.find_errors(loc, length)
+            errors = self.find_errors(loc, self.n)
 
-            for error in errors:
-                fixed_data[(length - 1) - error] ^= 1
+            try:
+                for error in errors:
+                    fixed_data[((length - 1) - error)] ^= 1
+            except:
+                pass
             break
         
         syndromes = self.get_syndromes(fixed_data)
@@ -250,12 +313,18 @@ class BCHEncoder():
         if max(syndromes) != 0:
             raise Exception("Too many errors.")
         
-        return fixed_data
+        # how the hell do you find out if the data was encoded systematically or not??
+        if systematical:
+            data = fixed_data[:self.r * -1]
+        else:
+            data = self.field.poly_div(fixed_data, self.generator_poly)
+
+        return data
 
 if __name__ == "__main__":
     # Input of primitive polynomial
-    input_pm = int("0x" + '11D', 16)#input("Primitive polynomial (hex): "), 16)
-    input_t = 5 #input("Correctable error count t (int): ")
+    input_pm = int("0x" + '83', 16)#input("Primitive polynomial (hex): "), 16)
+    input_t = 2 #input("Correctable error count t (int): ")
     input_encodetype = 2
     while input_encodetype is None:
         try:
@@ -264,32 +333,36 @@ if __name__ == "__main__":
                 raise Exception()
             input_encodetype = t
         except:
-            print("ffs...")
+            print("Wrong.")
 
     poly_hex = hex(input_pm)
     poly_bin = bin(input_pm)
     print("Power (m): %d\nInt: %d\nHex: %s\nBinary: %s\n" % (input_pm.bit_length() - 1, input_pm, poly_hex, poly_bin))
 
-    encoder = BCHEncoder(input_pm, input_t)
+    encoder = BCHEncoder(input_pm, input_t) # Initialize encoder
 
-    # Printing out field
-    print(encoder.field)
-    print(bin(encoder.generator)) # Printing generator polynomial
+    print("BCH Characteristics:\n(n, k, t) = (%d, %d, %d)\nd = %d\n" % (encoder.n, encoder.k, encoder.t, encoder.d))
+    print("Galois Field:\n%s\n" % encoder.field) # Printing out field
+    print("g(x) = %s" % (np.binary_repr(encoder.generator))) # Printing generator polynomial
     print("Generator matrix\nG = \n%s\n\nParity-check matrix\nH = \n%s\n\nParity-check matrix transposed\nH^T = \n%s\n" % (encoder.G, encoder.H, encoder.HT))
 
-    word = (1 << encoder.k) - (1 << encoder.k - random.randint(1, encoder.k - 1))
+    word = 0b101101#(1 << encoder.k - 15) - (1 << encoder.k - random.randint(1, encoder.k - 20))
+    print("Data to encode: %s\n" % np.binary_repr(word))
+
     encoder1 = encoder.encode_non_systematic(word)
     encoder2 = encoder.encode_systematic(word)
+    
+    print("Encoding result (non-systemical): %s\n" % encoder1,
+          "Encoding result (systemical):     %s\n" % encoder2, sep="")
 
-    print(encoder1, "encode non sys")
-    print(encoder2, "encode sys\n")
-
-    for i in range(0, 5):
-        rnd = random.randint(0, encoder.n)
-        encoder1[rnd] ^= 1
-        encoder2[rnd] ^= 1
-
-    print(encoder.decode(encoder1), "decode non sys")
-    print(encoder.decode(encoder2), "decode sys")
+    errors = 2 # Number of errors to be added
+    ers = random.sample(range(0, len(encoder1)), errors)
+    for i in ers:
+        encoder1[i] ^= 1
+        encoder2[i] ^= 1
+    
+    print("Decoding result (non-systemical): %s\n" % encoder.decode(encoder1, False),
+          "Decoding result (systemical):     %s\n" % encoder.decode(encoder2, True), sep="")
 
 #TODO: cleanup
+
