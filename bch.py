@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib as plt
-import galois
+import random
 
 # Generator for generating galois field. Equals to 2, because we're generating galois field for base 2.
 # Actually is p in GF(p**m)
@@ -10,7 +10,7 @@ def printbin(n, l):
     print(bin(n)[2:].zfill(l))
 
 # Input of primitive polynomial
-input_pm = int("0x" + '83', 16)#input("Primitive polynomial (hex): "), 16)
+input_pm = int("0x" + '11D', 16)#input("Primitive polynomial (hex): "), 16)
 input_t = 5 #input("Correctable error count t (int): ")
 input_encodetype = 2
 while input_encodetype is None:
@@ -259,7 +259,7 @@ class BCHEncoder():
             
             loc = self.find_error_locator(syndromes)
             errors = self.find_errors(loc, length)
-            print(errors)
+
             for error in errors:
                 fixed_data[(length - 1) - error] ^= 1
             break
@@ -279,7 +279,8 @@ print(encoder.field)
 print(bin(encoder.generator)) # Printing generator polynomial
 print("Generator matrix\nG = \n%s\n\nParity-check matrix\nH = \n%s\n\nParity-check matrix transposed\nH^T = \n%s\n" % (encoder.G, encoder.H, encoder.HT))
 
-word = 0b1011101
+wfd = [1,1,0,1,0,0,1,1,0,1,1,0,1,1,0,1,0,1,0,1,0,1,0,1,1,0,0,1,1,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1,1,0,1,0,1,0,1,0,1,0,1,1,0,1,0,1,0,1,1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,0,0,0,1,0,0,1,1,0,1,0,1,1,0,0]
+word = (1 << encoder.k) - (1 << encoder.k - random.randint(1, encoder.k - 1))
 encoder1 = encoder.encode_non_systematic(word)
 encoder2 = encoder.encode_systematic(word)
 
@@ -288,7 +289,13 @@ encoder2 = encoder.encode_systematic(word)
 
 print(encoder1, "encode non sys")
 print(encoder2, "encode sys\n")
-print(encoder.decode([1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1]), "decode non sys")
-print(encoder.decode([1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0]), "decode sys")
+
+for i in range(0, 5):
+    rnd = random.randint(0, encoder.n)
+    encoder1[rnd] ^= 1
+    encoder2[rnd] ^= 1
+
+print(encoder.decode(encoder1), "decode non sys")
+print(encoder.decode(encoder2), "decode sys")
 
 #TODO: cleanup, decoding
