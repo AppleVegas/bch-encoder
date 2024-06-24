@@ -9,7 +9,7 @@ import random
 def int_input(question, check_lambda):
     while True:
         try:
-            t = int(input(question))
+            t = int(input(question + "\n>>> "))
             if not check_lambda(t):
                 raise Exception()
             return t
@@ -18,8 +18,8 @@ def int_input(question, check_lambda):
 
 if __name__ == "__main__":
     # Input of primitive polynomial
-    input_pm = int("0x" + input("Primitive polynomial (hex): "), 16)
-    input_t = int_input("Correctable error amount t (int): ", lambda x: x >= 1)
+    input_pm = int("0x" + input("Primitive polynomial (hex):\n>>> "), 16)
+    input_t = int_input("Correctable error amount t (int):", lambda x: x >= 1)
 
     poly_hex = hex(input_pm)
     poly_bin = bin(input_pm)
@@ -30,27 +30,27 @@ if __name__ == "__main__":
     print("BCH Characteristics:\n(n, k, t) = (%d, %d, %d)\nd = %d\n" % (encoder.n, encoder.k, encoder.t, encoder.d))
     print("Galois Field:\n%s\n" % encoder.field) # Printing out field
     print("g(x) = %s\n" % (np.binary_repr(encoder.generator))) # Printing generator polynomial
-    print("Generator matrix\nG = \n%s\n\nParity-check matrix\nH = \n%s\n\nParity-check matrix transposed\nH^T = \n%s\n" % (encoder.G, encoder.H, encoder.HT))
+    print("Generator matrix\nG %s = \n%s\n\nParity-check matrix\nH %s = \n%s\n\nParity-check matrix transposed\nH^T %s = \n%s\n" % (encoder.G.shape, encoder.G, encoder.H.shape, encoder.H, encoder.HT.shape, encoder.HT))
 
     maxword = ((1 << encoder.k) - 1)
-    word = int_input("Input word to incode (int, %i max)\n" % maxword, lambda x: x >= 1 and x <= maxword)
+    word = int_input("Input word to incode (int, %i max):" % maxword, lambda x: x >= 1 and x <= maxword)
     print("Data to encode: %s\n" % np.binary_repr(word))
 
     encoder1 = encoder.encode_non_systematic(word)
     encoder2 = encoder.encode_systematic(word)
     
-    print("Encoding result (non-systemical): %s\n" % encoder1,
-          "Encoding result (systemical):     %s\n" % encoder2, sep="")
+    print("Encoding result (non-systematic): %s\n" % encoder1,
+          "Encoding result (systematic):     %s\n" % encoder2, sep="")
 
-    input_errors = int_input("Input number of errors to be added (int)\n", lambda x: x >= 1)
+    input_errors = int_input("Input number of errors to be added (int):", lambda x: x >= 1)
 
     ers = random.sample(range(0, len(encoder1)), input_errors)
     for i in ers:
         encoder1[i] ^= 1
         encoder2[i] ^= 1
 
-    print("Decoding result (non-systemical): %s, Errored bits: %s\n" % encoder.decode(encoder1, False),
-          "Decoding result (systemical):     %s, Errored Bits: %s\n" % encoder.decode(encoder2, True), sep="")
+    print("Decoding result (non-systematic): %s, Errored bits: %s\n" % encoder.decode(encoder1, False),
+          "Decoding result (systematic):     %s, Errored Bits: %s\n" % encoder.decode(encoder2, True), sep="")
 
     num_points = 10
     percent_maxerrors = 60
