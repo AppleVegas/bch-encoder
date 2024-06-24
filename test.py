@@ -33,7 +33,7 @@ if __name__ == "__main__":
     print("Generator matrix\nG %s = \n%s\n\nParity-check matrix\nH %s = \n%s\n\nParity-check matrix transposed\nH^T %s = \n%s\n" % (encoder.G.shape, encoder.G, encoder.H.shape, encoder.H, encoder.HT.shape, encoder.HT))
 
     maxword = ((1 << encoder.k) - 1)
-    word = int_input("Input word to incode (int, %i max):" % maxword, lambda x: x >= 1 and x <= maxword)
+    word = int_input("Input word to encode (int, %i max):" % maxword, lambda x: x >= 1 and x <= maxword)
     print("Data to encode: %s\n" % np.binary_repr(word))
 
     encoder1 = encoder.encode_non_systematic(word)
