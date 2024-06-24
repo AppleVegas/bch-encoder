@@ -49,6 +49,9 @@ if __name__ == "__main__":
         encoder1[i] ^= 1
         encoder2[i] ^= 1
 
+    print("Data with errors (non-systematic): %s\n" % encoder1,
+          "Data with errors (systematic):     %s\n" % encoder2, sep="")
+          
     print("Decoding result (non-systematic): %s, Errored bits: %s\n" % encoder.decode(encoder1, False),
           "Decoding result (systematic):     %s, Errored Bits: %s\n" % encoder.decode(encoder2, True), sep="")
 
