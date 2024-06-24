@@ -32,7 +32,6 @@ if __name__ == "__main__":
     print("g(x) = %s\n" % (np.binary_repr(encoder.generator))) # Printing generator polynomial
     print("Generator matrix\nG = \n%s\n\nParity-check matrix\nH = \n%s\n\nParity-check matrix transposed\nH^T = \n%s\n" % (encoder.G, encoder.H, encoder.HT))
 
-    word = 0b10100111001 # 1337
     maxword = ((1 << encoder.k) - 1)
     word = int_input("Input word to incode (int, %i max)\n" % maxword, lambda x: x >= 1 and x <= maxword)
     print("Data to encode: %s\n" % np.binary_repr(word))
@@ -53,9 +52,11 @@ if __name__ == "__main__":
     print("Decoding result (non-systemical): %s, Errored bits: %s\n" % encoder.decode(encoder1, False),
           "Decoding result (systemical):     %s, Errored Bits: %s\n" % encoder.decode(encoder2, True), sep="")
 
+    num_points = 10
+    percent_maxerrors = 60
     frames_amount = 64 # number of frames
     sample_data = np.array([encoder.field.int_to_poly((1 << encoder.n) - 1)] * frames_amount) 
-    test_range = np.arange(0, 50)
+    test_range = np.arange(0, percent_maxerrors + (percent_maxerrors//num_points), percent_maxerrors//num_points)
     BER = []
     FER = []
     for probability in test_range:
@@ -77,11 +78,11 @@ if __name__ == "__main__":
 
     test_range_lin = np.linspace(test_range.min(), test_range.max(), 200) 
     
-    BER = savgol_filter(BER, 10, 1)
-    FER = savgol_filter(FER, 10, 1)
+    #BER = savgol_filter(BER, 10, 1)
+    #FER = savgol_filter(FER, 10, 1)
 
-    ber_smooth = np.poly1d(np.polyfit(test_range, BER, 2))
-    fer_smooth = np.poly1d(np.polyfit(test_range, FER, 2))
+    ber_smooth = np.poly1d(np.polyfit(test_range, BER, num_points//2))
+    fer_smooth = np.poly1d(np.polyfit(test_range, FER, num_points//2))
 
     plt.yscale("log")
        
