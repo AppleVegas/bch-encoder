@@ -159,15 +159,15 @@ class GF():
 class BCHEncoder():
     def __init__(self, irreducible: int, t: int) -> 'BCHEncoder':
         # Creating field
-        self.field = GF(irreducible) # ideally polynomials should be generated ig, using input polys from table rn
-        self.m = irreducible.bit_length() - 1
-        self.n = 2**self.m - 1
-        self.t = t
-        self.d = 2*self.t + 1
+        self.field = GF(irreducible) # ideally polynomials should be generated ig, using input polys rn
+        self.m = irreducible.bit_length() - 1 # Power of the galois field
+        self.n = 2**self.m - 1 # Code length
+        self.t = t # Correctable error amount
+        self.d = 2*self.t + 1 # Hamming distance
         self.generator_poly = self.get_generator()
         self.generator = self.field.poly_to_int(self.generator_poly)
-        self.k = self.n - (self.generator.bit_length() - 1)
-        self.r = self.n - self.k
+        self.k = self.n - (self.generator.bit_length() - 1) # Amount of data bits
+        self.r = self.n - self.k # Amount of check bits
         self.G = None # Generator matrix
         self.H = None # Parity-check matrix
         self.HT = None # Parity-check matrix transposed
@@ -257,14 +257,14 @@ class BCHEncoder():
                 err_loc = self.field.poly_add(err_loc, self.field.poly_scale(old_loc, delta))
         return err_loc
 
-    def find_errors(self, locator_poly, length) -> 'list':
+    def find_errors(self, locator_poly, length) -> 'list': # Chien search
         err_pos = []
         for i in range(length):
             if self.field.poly_eval(locator_poly, self.field.a(i)) == 0:
                 err_pos.append((length - i) % length)
         return err_pos
     
-    def decode(self, data_v: list, systematical: bool) -> 'list':
+    def decode(self, data_v: list, systematic: bool = True) -> 'list':
         length = len(data_v)
         
         fixed_data = data_v
@@ -310,7 +310,7 @@ class BCHEncoder():
             raise Exception("Too many errors.")
         
         # how the hell do you find out if the data was encoded systematically or not??
-        if systematical:
+        if systematic:
             data = fixed_data[:self.r * -1]
         else:
             data = self.field.poly_div(fixed_data, self.generator_poly)
