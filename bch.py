@@ -307,7 +307,7 @@ class BCHEncoder():
         syndromes = self.get_syndromes(fixed_data)
 
         if max(syndromes) != 0:
-            raise Exception("Too many errors.")
+            errors = [-1]
         
         # how the hell do you find out if the data was encoded systematically or not??
         if systematic:
